@@ -135,6 +135,7 @@ if __name__ == "__main__":
         superres=superres,
         **config.trainer.params,
     ).to(device)
+
     # Create datasets
     train_ds = VideoTextDataset(
         data_folder=paths["example_data"] + "/ctvit-transformer",
@@ -161,11 +162,22 @@ if __name__ == "__main__":
     # Resume training if requested and possible
     if (
         args.resume == "auto"
-        and os.path.isdir("superres/ct_stage2")
-        and len(os.listdir(os.path.join("superres/ct_stage2", "models"))) > 0
+        and os.path.isdir(paths["results_folder"] + "/superres/ct_stage2")
+        and len(
+            os.listdir(
+                os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
+            )
+        )
+        > 0
     ):
-        checkpoints = sorted(os.listdir(os.path.join("superres/ct_stage2", "models")))
-        weight_path = os.path.join("models", checkpoints[-1])
+        checkpoints = sorted(
+            os.listdir(
+                os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
+            )
+        )
+        weight_path = os.path.join(
+            paths["results_folder"] + "/superres/ct_stage2", "models", checkpoints[-1]
+        )
         trainer.accelerator.print(f"Resuming training from {weight_path}")
         additional_data = trainer.load(weight_path)
         start_time = time.time() - additional_data["time_elapsed"]  # type: ignore

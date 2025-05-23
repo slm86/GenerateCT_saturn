@@ -8,31 +8,36 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.multiprocessing as mp
 import os
+import yaml
+
+with open("/home/jovyan/workspace/GenerateCT_saturn/paths.yaml", "r") as file:
+    paths = yaml.safe_load(file)
+
 
 def cycle(dl):
     while True:
         for data in dl:
             yield data
-            
+
+
 def train():
     # set up distributed training
 
     ctvit = CTViT(
-        dim = 512,
-        codebook_size = 8192,
-        image_size = 128,
-        patch_size = 16,
-        temporal_patch_size = 2,
-        spatial_depth = 4,
-        temporal_depth = 4,
-        dim_head = 32,
-        heads = 8
+        dim=512,
+        codebook_size=8192,
+        image_size=128,
+        patch_size=16,
+        temporal_patch_size=2,
+        spatial_depth=4,
+        temporal_depth=4,
+        dim_head=32,
+        heads=8,
     )
-
 
     # Load the pre-trained weights
 
-    pretrained_ctvit_path = 'pretrained_models/ctvit_pretrained.pt'
+    pretrained_ctvit_path = paths["pretrained_models"] + "/ctvit_pretrained.pt"
     ctvit.load(pretrained_ctvit_path)
 
     maskgit = MaskGit(
@@ -42,26 +47,23 @@ def train():
         dim_context=768,
         depth=6,
     )
-   
-    transformer_model = MaskGITTransformer(
-        ctvit=ctvit,
-        maskgit=maskgit
-    )
-    batch_size=1
-    #transformer_model.load('pretrained_models/transformer_pretrained.pt')
+
+    transformer_model = MaskGITTransformer(ctvit=ctvit, maskgit=maskgit)
+    batch_size = 1
+    # transformer_model.load('pretrained_models/transformer_pretrained.pt')
 
     # initialize DDP
     trainer = TransformerTrainer(
         transformer_model,
         num_train_steps=100000000,
         batch_size=1,
-        pretrained_ctvit_path='pretrained_models/ctvit_pretrained.pt',
-        results_folder="transformer_train"
+        pretrained_ctvit_path=paths["pretrained_models"] + "/ctvit_pretrained.pt",
+        results_folder=paths["results_folder"] + "/transformer_train",
     )
-
 
     trainer.train()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # set up multiprocessing
     train()

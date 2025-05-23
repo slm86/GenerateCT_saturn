@@ -47,7 +47,7 @@ wandb:
   entity: ""
 
 checkpoint:
-  path: "superres"
+  path: "/home/jovyan/workspace/generateCT/results/superres"
   batch_size: 1
   cond_scale: 1.
   save_every_x_it: 200

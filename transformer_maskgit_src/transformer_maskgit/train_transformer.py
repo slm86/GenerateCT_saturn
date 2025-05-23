@@ -172,10 +172,10 @@ class TransformerTrainer(nn.Module):
         for i in range(len(self.valid_ds)):
             list_val.append(self.valid_ds.dataset.paths[self.valid_ds.indices[i]])
 
-        with open("train_transformer.txt", "w") as f:
+        with open(paths["results_folder"] + "/train_transformer.txt", "w") as f:
             for item in list_train:
                 f.write(str(item) + "\n")
-        with open("valid_transformer.txt", "w") as f:
+        with open(paths["results_folder"] + "/valid_transformer.txt", "w") as f:
             for item in list_val:
                 f.write(str(item) + "\n")
 
