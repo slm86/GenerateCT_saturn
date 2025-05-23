@@ -83,7 +83,7 @@ def infer():
     for i, (input_name, text) in tqdm.tqdm(enumerate(texts_dict.items())):
         for k in range(1):
             out = transformer_model.sample(texts=text, num_frames=201, cond_scale=5.0)
-            path_test = Path("transformer_inference")
+            path_test = Path(paths["results_folder"] + "/transformer_inference")
             sampled_videos_path = path_test / f"samples.{input_name}_{str(i)}"
             (sampled_videos_path).mkdir(parents=True, exist_ok=True)
             for tensor in out.unbind(dim=0):
