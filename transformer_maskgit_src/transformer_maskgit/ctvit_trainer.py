@@ -23,6 +23,8 @@ from transformer_maskgit.ctvit import CTViT
 from transformer_maskgit.data import ImageDataset, VideoDataset, tensor_to_nifti
 
 from accelerate import Accelerator
+from accelerate.state import DistributedType
+import wandb
 
 import yaml
 
@@ -38,6 +40,11 @@ def exists(val):
 
 def noop(*args, **kwargs):
     pass
+
+
+def wandb_log_fn(logs):
+    for key, value in logs.items():
+        wandb.log({key: value})
 
 
 def cycle(dl):
@@ -150,6 +157,8 @@ class CTViTTrainer(nn.Module):
 
         self.accelerator = Accelerator(**accelerate_kwargs)
 
+        wandb.init(project="ctvit-training")
+
         self.vae = vae
 
         self.use_ema = use_ema
@@ -237,16 +246,14 @@ class CTViTTrainer(nn.Module):
         )
 
         # prepare with accelerator
-        self.dl_iter = cycle(self.dl)
-        self.valid_dl_iter = cycle(self.valid_dl)
-        (self.vae, self.optim, self.discr_optim, self.dl_iter, self.valid_dl_iter) = (
+        (self.vae, self.optim, self.discr_optim, self.dl, self.valid_dl) = (
             self.accelerator.prepare(
-                self.vae, self.optim, self.discr_optim, self.dl_iter, self.valid_dl_iter
+                self.vae, self.optim, self.discr_optim, self.dl, self.valid_dl
             )
         )
 
-        # self.dl_iter = cycle(self.dl)
-        # self.valid_dl_iter = cycle(self.valid_dl)
+        self.dl_iter = cycle(self.dl)
+        self.valid_dl_iter = cycle(self.valid_dl)
 
         self.save_model_every = save_model_every
         self.save_results_every = save_results_every
@@ -342,7 +349,6 @@ class CTViTTrainer(nn.Module):
             self.optim.zero_grad()
 
         # update discriminator
-
         if exists(self.vae.discr):
             self.discr_optim.zero_grad()
 
@@ -443,7 +449,7 @@ class CTViTTrainer(nn.Module):
         self.steps += 1
         return logs
 
-    def train(self, log_fn=noop):
+    def train(self, log_fn=wandb_log_fn):
         device = next(self.vae.parameters()).device
         device = torch.device("cuda")
 
