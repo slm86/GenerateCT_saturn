@@ -138,8 +138,8 @@ if __name__ == "__main__":
 
     # Create datasets
     train_ds = VideoTextDataset(
-        data_folder=paths["example_data"] + "/ctvit-transformer",
-        xlsx_file=paths["example_data"] + "/data_reports.xlsx",
+        data_folder=paths["debug_data"],
+        xlsx_file=paths["all_inspect_impressions"],
         num_frames=2,
     )
     trainer.add_train_dataset(

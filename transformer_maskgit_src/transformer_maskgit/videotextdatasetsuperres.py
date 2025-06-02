@@ -42,7 +42,7 @@ class VideoTextDataset(Dataset):
         self.min_slices = min_slices
         self.accession_to_text = self.load_accession_text(xlsx_file)
         self.paths = []
-        self.samples = self.prepare_samples()
+        self.samples = self.prepare_samples_inspect()
         self.resize_dim = resize_dim
         self.resize_transform = transforms.Resize((resize_dim, resize_dim))
         self.transform = transforms.Compose(
@@ -60,11 +60,42 @@ class VideoTextDataset(Dataset):
         )
 
     def load_accession_text(self, xlsx_file):
-        df = pd.read_excel(xlsx_file)
-        accession_to_text = {}
-        for index, row in df.iterrows():
-            accession_to_text[row["AccessionNo"]] = row["Impressions"]
+        if xlsx_file.endswith(".xlsx"):
+            df = pd.read_excel(xlsx_file)
+            accession_to_text = {}
+            for index, row in df.iterrows():
+                accession_to_text[row["AccessionNo"]] = row["Impressions"]
+        elif xlsx_file.endswith(".csv"):
+            df = pd.read_csv(xlsx_file)
+            accession_to_text = {}
+            for index, row in df.iterrows():
+                accession_to_text[row["impression_id"]] = row["impressions"]
+        else:
+            raise ValueError(f"Unsupported file type: {xlsx_file}")
         return accession_to_text
+
+    def prepare_samples_inspect(self):
+        samples = []
+
+        for nii_file in glob.glob(os.path.join(self.data_folder, "*.nii.gz")):
+            nii_img = nib.load(nii_file)
+            if (
+                nii_img.shape[-1] < 100
+                or nii_img.shape[-1] > 600
+                or len(nii_img.shape) != 3
+            ):
+                continue
+            else:
+                accession_number = os.path.basename(nii_file)
+                accession_number = accession_number.split(".nii.gz")[0]
+                if accession_number not in self.accession_to_text:
+                    continue
+                else:
+                    impression_text = self.accession_to_text[accession_number]
+                    samples.append((nii_file, impression_text))
+                    self.paths.append(nii_file)
+
+        return samples
 
     def prepare_samples(self):
         samples = []

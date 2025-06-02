@@ -20,6 +20,7 @@ import math
 import torch.optim.lr_scheduler as lr_scheduler
 
 import yaml
+import wandb
 
 with open("/home/jovyan/workspace/GenerateCT_saturn/paths.yaml", "r") as file:
     paths = yaml.safe_load(file)
@@ -33,6 +34,11 @@ def exists(val):
 
 def noop(*args, **kwargs):
     pass
+
+
+def wandb_log_fn(logs):
+    for key, value in logs.items():
+        wandb.log({key: value})
 
 
 def cycle(dl):
@@ -116,6 +122,8 @@ class TransformerTrainer(nn.Module):
         self,
         maskgittransformer: MaskGITTransformer,
         *,
+        data_folder,
+        xlsx_file,
         num_train_steps,
         batch_size,
         pretrained_ctvit_path,
@@ -132,6 +140,9 @@ class TransformerTrainer(nn.Module):
         self.accelerator = Accelerator(
             kwargs_handlers=[ddp_kwargs], **accelerate_kwargs
         )
+
+        wandb.init(project="maskgit-training")
+
         self.maskgittransformer = maskgittransformer
 
         self.register_buffer("steps", torch.Tensor([0]))
@@ -147,8 +158,8 @@ class TransformerTrainer(nn.Module):
         self.lr = lr
         # Load the pre-trained weights
         self.ds = VideoTextDataset(
-            data_folder=paths["example_data"] + "/ctvit-transformer",
-            xlsx_file=paths["example_data"] + "/data_reports.xlsx",
+            data_folder=data_folder,
+            xlsx_file=xlsx_file,
             num_frames=2,
         )
         # Split dataset into train and validation sets
@@ -196,8 +207,6 @@ class TransformerTrainer(nn.Module):
         )
 
         # prepare with accelerator
-        self.dl_iter = cycle(self.dl)
-        self.valid_dl_iter = cycle(self.valid_dl)
         self.device = self.accelerator.device
         self.maskgittransformer.to(self.device)
         self.lr_scheduler = CosineAnnealingWarmUpRestarts(
@@ -208,21 +217,21 @@ class TransformerTrainer(nn.Module):
         )  # Maximum learning rate
 
         (
-            self.dl_iter,
-            self.valid_dl_iter,
+            self.dl,
+            self.valid_dl,
             self.maskgittransformer,
             self.optim,
             self.lr_scheduler,
         ) = self.accelerator.prepare(
-            self.dl_iter,
-            self.valid_dl_iter,
+            self.dl,
+            self.valid_dl,
             self.maskgittransformer,
             self.optim,
             self.lr_scheduler,
         )
 
-        # self.dl_iter = cycle(self.dl_iter)
-        # self.valid_dl_iter = cycle(self.valid_dl_iter)
+        self.dl_iter = cycle(self.dl)
+        self.valid_dl_iter = cycle(self.valid_dl)
 
         self.save_model_every = save_model_every
         self.save_results_every = save_results_every
@@ -374,7 +383,7 @@ class TransformerTrainer(nn.Module):
         self.steps += 1
         return logs
 
-    def train(self, log_fn=noop):
+    def train(self, log_fn=wandb_log_fn):
         device = next(self.maskgittransformer.parameters()).device
         device = torch.device("cuda")
         while self.steps < self.num_train_steps:

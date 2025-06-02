@@ -49,14 +49,16 @@ def train():
     )
 
     transformer_model = MaskGITTransformer(ctvit=ctvit, maskgit=maskgit)
-    batch_size = 1
-    # transformer_model.load('pretrained_models/transformer_pretrained.pt')
+
+    transformer_model.load(paths["pretrained_models"] + "/transformer_pretrained.pt")
 
     # initialize DDP
     trainer = TransformerTrainer(
         transformer_model,
-        num_train_steps=100000000,
-        batch_size=1,
+        data_folder=paths["debug_data"],
+        xlsx_file=paths["all_inspect_impressions"],
+        num_train_steps=5,
+        batch_size=2,
         pretrained_ctvit_path=paths["pretrained_models"] + "/ctvit_pretrained.pt",
         results_folder=paths["results_folder"] + "/transformer_train",
     )
