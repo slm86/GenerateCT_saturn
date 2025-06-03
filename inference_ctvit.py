@@ -17,11 +17,12 @@ ctvit = CTViT(
     dim_head=32,
     heads=8,
 )
-ctvit.load(paths["pretrained_models"] + "/ctvit_pretrained.pt")
+# ctvit.load(paths["pretrained_models"] + "/ctvit_pretrained.pt")
+ctvit.load(paths["ctvit_checkpoint"])
 
 vit_infer = CTVIT_inf(
     ctvit,
-    folder="example_data_valid_ctvit",
+    folder=paths["debug_data"],
     batch_size=1,
     results_folder=paths["results_folder"] + "/ctvit_inference",
     grad_accum_every=1,

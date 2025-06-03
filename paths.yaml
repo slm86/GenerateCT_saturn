@@ -5,6 +5,10 @@ scratch: /home/jovyan/workspace/generateCT/scratch
 results_folder: /home/jovyan/workspace/generateCT/results_debug
 
 debug_data: /home/jovyan/shared/slmoro/data/inspect2/pe_training_data/CTPA_debug
+lowres_data: /home/jovyan/workspace/generateCT/results_debug/ctvit_inference/samples.CTPA_debug
 
 all_inspect_data: /home/jovyan/shared/slmoro/data/inspect2/CTPA
 all_inspect_impressions: /home/jovyan/shared/slmoro/data/inspect2/Final_Impressions.csv
+
+ctvit_checkpoint: /home/jovyan/workspace/generateCT/results_debug/ctvit/vae.250.pt
+superres_checkpoint: /home/jovyan/workspace/generateCT/pretrained_models/superres_pretrained.pt

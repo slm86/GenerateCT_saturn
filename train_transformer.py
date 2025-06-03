@@ -55,9 +55,9 @@ def train():
     # initialize DDP
     trainer = TransformerTrainer(
         transformer_model,
-        data_folder=paths["debug_data"],
+        data_folder=paths["all_inspect_data"],
         xlsx_file=paths["all_inspect_impressions"],
-        num_train_steps=5,
+        num_train_steps=10000,
         batch_size=2,
         pretrained_ctvit_path=paths["pretrained_models"] + "/ctvit_pretrained.pt",
         results_folder=paths["results_folder"] + "/transformer_train",

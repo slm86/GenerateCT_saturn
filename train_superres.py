@@ -160,28 +160,32 @@ if __name__ == "__main__":
     trainer.accelerator.wait_for_everyone()
 
     # Resume training if requested and possible
-    if (
-        args.resume == "auto"
-        and os.path.isdir(paths["results_folder"] + "/superres/ct_stage2")
-        and len(
-            os.listdir(
-                os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
-            )
-        )
-        > 0
-    ):
-        checkpoints = sorted(
-            os.listdir(
-                os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
-            )
-        )
-        weight_path = os.path.join(
-            paths["results_folder"] + "/superres/ct_stage2", "models", checkpoints[-1]
-        )
+    # if (
+    #     args.resume == "auto"
+    #     and os.path.isdir(paths["results_folder"] + "/superres/ct_stage2")
+    #     and len(
+    #         os.listdir(
+    #             os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
+    #         )
+    #     )
+    #     > 0
+    # ):
+    #     checkpoints = sorted(
+    #         os.listdir(
+    #             os.path.join(paths["results_folder"] + "/superres/ct_stage2", "models")
+    #         )
+    #     )
+    #     weight_path = os.path.join(
+    #         paths["results_folder"] + "/superres/ct_stage2", "models", checkpoints[-1]
+    #     )
+    #     trainer.accelerator.print(f"Resuming training from {weight_path}")
+    #     additional_data = trainer.load(weight_path)
+    #     start_time = time.time() - additional_data["time_elapsed"]  # type: ignore
+    if args.resume == "auto" and os.path.exists(paths["superres_checkpoint"]):
+        weight_path = paths["superres_checkpoint"]
         trainer.accelerator.print(f"Resuming training from {weight_path}")
         additional_data = trainer.load(weight_path)
         start_time = time.time() - additional_data["time_elapsed"]  # type: ignore
-
     else:
         train_days = 0
         start_time = time.time()
@@ -224,6 +228,7 @@ if __name__ == "__main__":
     while True:  # let slurm handle the stopping
         loss = trainer.train_step(unet_number=args.stage)
         cur_step = trainer.steps[args.stage - 1].item()  # type: ignore
+        trainer.accelerator.log({"train/step": cur_step})
 
         if trainer.is_main:
             one_line_log(config, cur_step, loss, batch_per_epoch, start_time)

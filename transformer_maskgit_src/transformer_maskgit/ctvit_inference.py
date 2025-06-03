@@ -23,6 +23,7 @@ from transformer_maskgit.ctvit import CTViT
 from transformer_maskgit.data import ImageDataset, VideoDataset, tensor_to_nifti
 
 from accelerate import Accelerator, DistributedType
+import wandb
 
 # helpers
 
@@ -144,6 +145,8 @@ class CTVIT_inf(nn.Module):
         image_size = vae.image_size
 
         self.accelerator = Accelerator(**accelerate_kwargs)
+
+        wandb.init(project="ctvit-inference")
 
         self.vae = vae
 
@@ -313,14 +316,17 @@ class CTVIT_inf(nn.Module):
 
                     sampled_videos_path = self.results_folder / f"samples.{filename}"
                     (sampled_videos_path).mkdir(parents=True, exist_ok=True)
-                    i = 0
+                    j = 0
                     for tensor in recons.unbind(dim=0):
+                        if name.endswith(".nii.gz"):
+                            name = name[:-7]
                         tensor_to_nifti(
                             tensor, str(sampled_videos_path / f"{name}.nii.gz")
                         )
-                        i = i + 1
+                        j = j + 1
 
                     self.print(f"{steps}: saving to {str(self.results_folder)}")
+                    wandb.log({"infer/step": i}, step=i)
 
         logs = "test"
         self.print("inference complete")

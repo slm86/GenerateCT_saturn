@@ -87,8 +87,11 @@ class VideoTextDataset(Dataset):
                 continue
             else:
                 accession_number = os.path.basename(nii_file)
+                nii_lowres = os.path.join(paths["lowres_data"], accession_number)
                 accession_number = accession_number.split(".nii.gz")[0]
                 if accession_number not in self.accession_to_text:
+                    continue
+                elif not os.path.exists(nii_lowres):
                     continue
                 else:
                     impression_text = self.accession_to_text[accession_number]
@@ -163,11 +166,16 @@ class VideoTextDataset(Dataset):
         nii_img = nib.load(str(path))
         img_data = nii_img.get_fdata()
         path_json = str(path).replace(".nii.gz", "") + ("_metadata.json")
-        with open(path_json, "r") as f:
-            json_data = json.load(f)
-            slope = int(float(json_data["RescaleSlope"]))
-            intercept = int(float(json_data["RescaleIntercept"]))
-            manufacturer = json_data["Manufacturer"]
+        try:
+            with open(path_json, "r") as f:
+                json_data = json.load(f)
+                slope = int(float(json_data["RescaleSlope"]))
+                intercept = int(float(json_data["RescaleIntercept"]))
+                manufacturer = json_data["Manufacturer"]
+        except:
+            slope = 1
+            intercept = 0
+            manufacturer = ""
         img_data = slope * img_data + intercept
         hu_min, hu_max = -1000, 1000
         img_data = np.clip(img_data, hu_min, hu_max)
@@ -214,14 +222,15 @@ class VideoTextDataset(Dataset):
         nii_lowres_img = nii_lowres.split("/")[-1]
         nii_lowres = nii_lowres.split("/")[-2]
         nii_lowres = "samples." + nii_lowres
-        nii_lowres = (
-            paths["example_data"]
-            + "/superres/ctvit_outputs/"
-            + nii_lowres
-            + "/"
-            + nii_lowres_img
-            + ".nii.gz"
-        )
+        # nii_lowres = (
+        #     paths["example_data"]
+        #     + "/superres/ctvit_outputs/"
+        #     + nii_lowres
+        #     + "/"
+        #     + nii_lowres_img
+        #     + ".nii.gz"
+        # )
+        nii_lowres = os.path.join(paths["lowres_data"], nii_lowres_img)
         video_lowres = self.lowres_to_tensor(nii_lowres)
 
         return (
