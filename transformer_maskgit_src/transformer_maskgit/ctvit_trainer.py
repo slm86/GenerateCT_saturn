@@ -346,6 +346,7 @@ class CTViTTrainer(nn.Module):
                 )
 
             self.optim.step()
+
             self.optim.zero_grad()
 
         # update discriminator
