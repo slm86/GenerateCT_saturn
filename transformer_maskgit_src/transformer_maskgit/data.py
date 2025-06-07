@@ -326,6 +326,7 @@ class VideoDataset(Dataset):
 
     def __getitem__(self, index):
         path = self.paths[index]
+        # print(f"Getting item {index} from {path}")
         ext = path.suffix
         if ext == ".gif":
             tensor = self.gif_to_tensor(path)

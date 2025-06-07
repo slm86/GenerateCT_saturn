@@ -24,13 +24,17 @@ cvivit.load(paths["pretrained_models"] + "/ctvit_pretrained.pt")
 trainer = CTViTTrainer(
     cvivit,
     folder=paths["debug_data"],
-    batch_size=4,
+    batch_size=8,
+    num_workers=8,
     results_folder=paths["results_folder"] + "/ctvit",
     grad_accum_every=1,
     train_on_images=False,  # you can train on images first, before fine tuning on video, for sample efficiency
     use_ema=False,  # recommended to be turned on (keeps exponential moving averaged cvivit) unless if you don't have enough resources
     num_train_steps=10,
     num_frames=2,
+    accelerate_kwargs={
+        "log_with": "wandb",
+    },
 )
 
 trainer.train()  # reconstructions and checkpoints will be saved periodically to ./results

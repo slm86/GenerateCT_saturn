@@ -7,7 +7,7 @@ from beartype import beartype
 import nibabel as nib
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split, DistributedSampler
 
 import torchvision.transforms as T
 from torchvision.datasets import ImageFolder
@@ -76,7 +76,7 @@ from torch.utils.data import BatchSampler
 
 
 class CustomBatchSampler(BatchSampler):
-    def __init__(self, dataset, batch_size, drop_last=False):
+    def __init__(self, dataset, batch_size, drop_last=True):
         self.dataset = dataset
         self.batch_size = batch_size
         self.drop_last = drop_last
@@ -132,6 +132,7 @@ class CTViTTrainer(nn.Module):
         *,
         num_train_steps,
         batch_size,
+        num_workers,
         folder,
         train_on_images=False,
         num_frames=17,
@@ -156,8 +157,15 @@ class CTViTTrainer(nn.Module):
         image_size = vae.image_size
 
         self.accelerator = Accelerator(**accelerate_kwargs)
-
-        wandb.init(project="ctvit-training")
+        self.accelerator.init_trackers(
+            project_name="ctvit-training",
+            config={
+                "batch_size": batch_size,
+                "lr": lr,
+                "use_ema": use_ema,
+                "results_folder": results_folder,
+            },
+        )
 
         self.vae = vae
 
@@ -218,10 +226,10 @@ class CTViTTrainer(nn.Module):
 
         # dataloader
         batch_sampler_train = CustomBatchSampler(
-            self.ds, batch_size=batch_size, drop_last=False
+            self.ds, batch_size=batch_size, drop_last=True
         )
         batch_sampler_val = CustomBatchSampler(
-            self.valid_ds, batch_size=batch_size, drop_last=False
+            self.valid_ds, batch_size=batch_size, drop_last=True
         )
         list_train = []
         list_val = []
@@ -237,12 +245,20 @@ class CTViTTrainer(nn.Module):
             for item in list_val:
                 f.write(str(item) + "\n")
 
+        train_sampler = DistributedSampler(self.ds, shuffle=True)
+        valid_sampler = DistributedSampler(self.valid_ds, shuffle=False)
         self.dl = DataLoader(
-            self.ds, batch_size=batch_size, shuffle=True, num_workers=1
+            self.ds,
+            batch_size=batch_size,
+            sampler=train_sampler,
+            num_workers=num_workers,
         )
 
         self.valid_dl = DataLoader(
-            self.valid_ds, batch_size=batch_size, shuffle=True, num_workers=1
+            self.valid_ds,
+            batch_size=batch_size,
+            sampler=valid_sampler,
+            num_workers=num_workers,
         )
 
         # prepare with accelerator
@@ -329,7 +345,11 @@ class CTViTTrainer(nn.Module):
         # update vae (generator)
         for i in range(3):
             for _ in range(self.grad_accum_every):
+                print(f"Training step {i} for generator")
                 img = next(self.dl_iter)
+                print(
+                    f"Image shape at step {i}: {img.shape}, device: {img.device}, {device}"
+                )
                 device = torch.device("cuda")
                 img = img.to(device)
 
@@ -451,11 +471,9 @@ class CTViTTrainer(nn.Module):
         return logs
 
     def train(self, log_fn=wandb_log_fn):
-        device = next(self.vae.parameters()).device
-        device = torch.device("cuda")
 
         while self.steps < self.num_train_steps:
             logs = self.train_step()
-            log_fn(logs)
+            self.accelerator.log(logs)
 
         self.print("training complete")
