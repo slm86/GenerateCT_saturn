@@ -2,7 +2,7 @@ example_data: /home/jovyan/workspace/generateCT/example_data
 pretrained_models: /home/jovyan/workspace/generateCT/pretrained_models
 scratch: /home/jovyan/workspace/generateCT/scratch
 
-results_folder: /home/jovyan/workspace/generateCT/results_debug
+results_folder: /home/jovyan/workspace/generateCT/results_0607
 
 debug_data: /home/jovyan/shared/slmoro/data/inspect2/pe_training_data/CTPA_debug
 lowres_data: /home/jovyan/workspace/generateCT/results_debug/ctvit_inference/samples.CTPA_debug
