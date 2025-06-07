@@ -325,3 +325,6 @@ if __name__ == "__main__":
             trainer.accelerator.print(
                 f"DONE: Saving model (it. {cur_step}): {ckpt_path}"
             )
+
+    if dist.is_initialized():
+        dist.destroy_process_group()

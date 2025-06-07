@@ -710,9 +710,9 @@ class SuperResolutionTrainer(nn.Module):
             )
 
         dl = DataLoader(ds, batch_size=batch_size, **dl_kwargs)
-        print(len(ds))
+        print(f"train dataset length: {len(ds)}")
         self.add_train_dataloader(dl)
-        print(dl)
+        print(f"train dataloader length: {len(dl)}")
 
         if not self.split_valid_from_train:
             return
