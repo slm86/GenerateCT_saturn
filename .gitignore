@@ -60,3 +60,4 @@ htmlcov/
 # Other
 *.log
 wandb/
+paths.yaml

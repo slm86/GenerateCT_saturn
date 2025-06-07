@@ -126,6 +126,7 @@ class TransformerTrainer(nn.Module):
         xlsx_file,
         num_train_steps,
         batch_size,
+        num_workers,
         pretrained_ctvit_path,
         lr=3e-5,
         wd=0.0,
@@ -141,7 +142,7 @@ class TransformerTrainer(nn.Module):
             kwargs_handlers=[ddp_kwargs], **accelerate_kwargs
         )
 
-        wandb.init(project="maskgit-training")
+        self.accelerator.init_trackers(project_name="maskgit-training")
 
         self.maskgittransformer = maskgittransformer
 
@@ -190,20 +191,20 @@ class TransformerTrainer(nn.Module):
             for item in list_val:
                 f.write(str(item) + "\n")
 
+        train_sampler = DistributedSampler(self.ds, shuffle=True)
+        valid_sampler = DistributedSampler(self.valid_ds, shuffle=False)
         self.dl = DataLoader(
             self.ds,
-            num_workers=8,
+            num_workers=num_workers,
             batch_size=self.batch_size,
-            shuffle=True,
-            # batch_sampler=batch_sampler_train,
+            sampler=train_sampler,
         )
 
         self.valid_dl = DataLoader(
             self.valid_ds,
-            num_workers=8,
+            num_workers=num_workers,
             batch_size=self.batch_size,
-            shuffle=True,
-            # batch_sampler=batch_sampler_val,
+            sampler=valid_sampler,
         )
 
         # prepare with accelerator
@@ -341,7 +342,7 @@ class TransformerTrainer(nn.Module):
                     if "module" in model.__dict__:
                         model = model.module
 
-                    recons = model.sample(
+                    recons = self.accelerator.unwrap_model(model).sample(
                         texts=text, num_frames=201, cond_scale=5.0
                     )  # (1, 3, 17, 256, 128)
 
@@ -388,6 +389,6 @@ class TransformerTrainer(nn.Module):
         device = torch.device("cuda")
         while self.steps < self.num_train_steps:
             logs = self.train_step()
-            log_fn(logs)
+            self.accelerator.log(logs)
 
         self.print("training complete")
