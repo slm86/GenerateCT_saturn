@@ -24,7 +24,7 @@ cvivit.load(paths["pretrained_models"] + "/ctvit_pretrained.pt")
 trainer = CTViTTrainer(
     cvivit,
     folder=paths["debug_data"],
-    batch_size=8,
+    batch_size=12,
     num_workers=8,
     results_folder=paths["results_folder"] + "/ctvit",
     grad_accum_every=1,

@@ -345,13 +345,12 @@ class CTViTTrainer(nn.Module):
         # update vae (generator)
         for i in range(3):
             for _ in range(self.grad_accum_every):
-                print(f"Training step {i} for generator")
                 img = next(self.dl_iter)
-                print(
-                    f"Image shape at step {i}: {img.shape}, device: {img.device}, {device}"
-                )
                 device = torch.device("cuda")
                 img = img.to(device)
+                print(
+                    f"Image shape at generator step {i}: {img.shape}, device: {img.device}, {device}"
+                )
 
                 with self.accelerator.autocast():
                     loss = self.vae(img, apply_grad_penalty=apply_grad_penalty)
