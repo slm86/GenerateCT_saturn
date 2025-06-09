@@ -142,7 +142,21 @@ class TransformerTrainer(nn.Module):
             kwargs_handlers=[ddp_kwargs], **accelerate_kwargs
         )
 
-        self.accelerator.init_trackers(project_name="maskgit-training")
+        self.accelerator.init_trackers(
+            project_name="maskgit-training",
+            config={
+                "batch_size": batch_size,
+                "num_workers": num_workers,
+                "lr": lr,
+                "results_folder": results_folder,
+                "save_results_every": save_results_every,
+                "save_model_every": save_model_every,
+                "num_train_steps": num_train_steps,
+                "pretrained_ctvit_path": pretrained_ctvit_path,
+                "data_folder": data_folder,
+                "xlsx_file": xlsx_file,
+            },
+        )
 
         self.maskgittransformer = maskgittransformer
 

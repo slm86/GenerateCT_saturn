@@ -37,7 +37,7 @@ def train():
 
     # Load the pre-trained weights
 
-    pretrained_ctvit_path = paths["pretrained_models"] + "/ctvit_pretrained.pt"
+    pretrained_ctvit_path = paths["ctvit_checkpoint"]
     ctvit.load(pretrained_ctvit_path)
 
     maskgit = MaskGit(
@@ -55,15 +55,15 @@ def train():
     # initialize DDP
     trainer = TransformerTrainer(
         transformer_model,
-        data_folder=paths["debug_data"],
+        data_folder=paths["all_inspect_data"],
         xlsx_file=paths["all_inspect_impressions"],
-        num_train_steps=50,
+        num_train_steps=100000,
         batch_size=2,
         num_workers=8,
-        pretrained_ctvit_path=paths["pretrained_models"] + "/ctvit_pretrained.pt",
+        pretrained_ctvit_path=paths["ctvit_checkpoint"],
         results_folder=paths["results_folder"] + "/transformer_train",
-        save_results_every=10,
-        save_model_every=20,
+        save_results_every=100,
+        save_model_every=500,
         accelerate_kwargs={
             "log_with": "wandb",
         },
