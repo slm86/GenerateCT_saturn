@@ -22,9 +22,9 @@ ctvit.load(paths["ctvit_checkpoint"])
 
 vit_infer = CTVIT_inf(
     ctvit,
-    folder=paths["debug_data"],
+    folder=paths["all_inspect_data"],
     batch_size=1,
-    results_folder=paths["results_folder"] + "/ctvit_inference",
+    results_folder=paths["results_folder_shared"],
     grad_accum_every=1,
     train_on_images=False,  # you can train on images first, before fine tuning on video, for sample efficiency
     use_ema=False,  # recommended to be turned on (keeps exponential moving averaged ctvit) unless if you don't have enough resources

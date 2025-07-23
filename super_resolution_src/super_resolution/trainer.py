@@ -309,7 +309,7 @@ class SuperResolutionTrainer(nn.Module):
         self,
         superres=None,
         superres_checkpoint_path=None,
-        use_ema=True,
+        use_ema=False,
         lr=1e-4,
         eps=1e-8,
         beta1=0.9,
@@ -597,14 +597,25 @@ class SuperResolutionTrainer(nn.Module):
         optimizer = getattr(self, f"optim{unet_index}")
         scheduler = getattr(self, f"scheduler{unet_index}")
 
+        # if self.train_dl:
+        #     self.unet_being_trained, self.train_dl, optimizer = (
+        #         self.accelerator.prepare(unet, self.train_dl, optimizer)
+        #     )
+        # else:
+        #     self.unet_being_trained, optimizer = self.accelerator.prepare(
+        #         unet, optimizer
+        #     )
+
         if self.train_dl:
-            self.unet_being_trained, self.train_dl, optimizer = (
-                self.accelerator.prepare(unet, self.train_dl, optimizer)
+            self.unet_being_trained, self.train_dl = self.accelerator.prepare(
+                unet, self.train_dl
             )
         else:
-            self.unet_being_trained, optimizer = self.accelerator.prepare(
-                unet, optimizer
-            )
+            self.unet_being_trained = self.accelerator.prepare(unet)
+
+        if self.valid_dl:
+            self.valid_dl = self.accelerator.prepare(self.valid_dl)
+        print("***", "prepared train_dl and valid_dl")
 
         if exists(scheduler):
             scheduler = self.accelerator.prepare(scheduler)
@@ -688,6 +699,7 @@ class SuperResolutionTrainer(nn.Module):
         assert not exists(self.valid_dl), "validation dataloader was already added"
         assert not self.prepared, f"You need to add the dataset before preperation"
         self.valid_dl = dl
+        print("***", "added valid_dl")
 
     def add_train_dataset(self, ds=None, *, batch_size, **dl_kwargs):
         if not exists(ds):
@@ -739,6 +751,7 @@ class SuperResolutionTrainer(nn.Module):
             return
 
         self.train_dl_iter = cycle(self.train_dl)
+        print("***", "created train_dl_iter")
 
     def create_valid_iter(self):
         assert exists(
@@ -749,6 +762,7 @@ class SuperResolutionTrainer(nn.Module):
             return
 
         self.valid_dl_iter = cycle(self.valid_dl)
+        print("***", "created valid_dl_iter")
 
     def train_step(self, unet_number=None, **kwargs):
         if not self.prepared:

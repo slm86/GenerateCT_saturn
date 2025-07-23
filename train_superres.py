@@ -133,12 +133,13 @@ if __name__ == "__main__":
 
     trainer = SuperResolutionTrainer(
         superres=superres,
+        use_ema=False,  # stefi
         **config.trainer.params,
     ).to(device)
 
     # Create datasets
     train_ds = VideoTextDataset(
-        data_folder=paths["debug_data"],
+        data_folder=paths["all_inspect_data"],
         xlsx_file=paths["all_inspect_impressions"],
         num_frames=2,
     )
@@ -193,17 +194,18 @@ if __name__ == "__main__":
 
     # Save reference videos and get test embeddings
     trainer.accelerator.print("Getting reference videos...")
+    # images_ref_input, images_ref, texts_ref = next(iter(trainer.valid_dl))
+    trainer.valid_step(unet_number=args.stage)
+    images_ref_input, images_ref, texts_ref = next(trainer.valid_dl_iter)
+    print("*1*", images_ref_input.shape)
+    images_ref = images_ref[0]
+    images_ref_input = images_ref_input[0]
+    texts_ref = texts_ref[0]
+    images_ref = images_ref.permute(2, 3, 1, 0)
+    images_ref_input = images_ref_input.permute(2, 3, 1, 0)
+    image_ref_shape = images_ref[0].shape
+    image_ref_input_shape = images_ref_input[0].shape
     if trainer.is_main:
-
-        images_ref_input, images_ref, texts_ref = next(iter(trainer.valid_dl))
-        images_ref = images_ref[0]
-        images_ref_input = images_ref_input[0]
-        print("test")
-        texts_ref = texts_ref[0]
-        images_ref = images_ref.permute(2, 3, 1, 0)
-        images_ref_input = images_ref_input.permute(2, 3, 1, 0)
-        image_ref_shape = images_ref[0].shape
-        image_ref_input_shape = images_ref_input[0].shape
         affine = np.eye(4)  # example affine matrix
         nii = nib.Nifti1Image(images_ref.numpy(), affine)
         nib.save(nii, os.path.join(save_folder, "images", f"_reference_output.nii.gz"))
@@ -216,6 +218,7 @@ if __name__ == "__main__":
         sample_kwargs["start_at_unet_number"] = config.stage
         sample_kwargs["stop_at_unet_number"] = config.stage
         sample_kwargs["texts"] = texts_ref
+    trainer.accelerator.wait_for_everyone()
 
     if config.stage > 1 and trainer.is_main:  # Condition on low res image
         images_ref = images_ref.permute(2, 3, 0, 1)
@@ -233,48 +236,51 @@ if __name__ == "__main__":
         if trainer.is_main:
             one_line_log(config, cur_step, loss, batch_per_epoch, start_time)
 
-        if cur_step % config.checkpoint.save_every_x_it == 1:
+        trainer.valid_step(unet_number=args.stage)
+        if cur_step % config.checkpoint.save_every_x_it == 0:
             trainer.accelerator.wait_for_everyone()
             trainer.accelerator.print()
             trainer.accelerator.print(f"Saving model and videos (it. {cur_step})")
 
+            # images_ref_input, images_ref, texts_ref = next(iter(trainer.valid_dl))
+            images_ref_input, images_ref, texts_ref = next(trainer.valid_dl_iter)
+            print("*2*", cur_step, images_ref_input.shape)
+            images_ref = images_ref[0]
+            images_ref_input = images_ref_input[0]
+            print("test2")
+            texts_ref = texts_ref[0]
+            images_ref = images_ref.permute(1, 0, 2, 3)
+            images_ref_input = images_ref_input.permute(1, 0, 2, 3)
+            image_ref_shape = images_ref[0].shape
+            image_ref_input_shape = images_ref_input[0].shape
+            texts_ref = [texts_ref]
+
+            print("*3*", "example image sampling")
+
+            with torch.no_grad():
+                image_list = []
+                torch.cuda.empty_cache()
+                for i in range(images_ref_input.shape[0]):
+                    input_img = images_ref_input[i : i + 1]  # type: ignore
+                    sample_images = (
+                        trainer.sample(
+                            cond_scale=config.checkpoint.cond_scale,
+                            texts=texts_ref,
+                            start_image_or_video=input_img,
+                            start_at_unet_number=2,
+                        )
+                        .detach()
+                        .cpu()
+                    )  # B x C x H x W
+                    image_list.append(sample_images[0])
+
+            sample_images = torch.stack(image_list)
+            input_img = images_ref_input
+            input_img = input_img.permute(2, 3, 0, 1)
+            real_img = images_ref.permute(2, 3, 0, 1)
+            sample_images = sample_images.permute(2, 3, 0, 1)
             if trainer.is_main:
-                images_ref_input, images_ref, texts_ref = next(iter(trainer.valid_dl))
-                images_ref = images_ref[0]
-                images_ref_input = images_ref_input[0]
-                print("test")
-                texts_ref = texts_ref[0]
-                images_ref = images_ref.permute(1, 0, 2, 3)
-                images_ref_input = images_ref_input.permute(1, 0, 2, 3)
-                image_ref_shape = images_ref[0].shape
-                image_ref_input_shape = images_ref_input[0].shape
-                texts_ref = [texts_ref]
                 sample_kwargs["texts"] = texts_ref
-
-                with torch.no_grad():
-                    image_list = []
-                    torch.cuda.empty_cache()
-                    for i in range(images_ref_input.shape[0]):
-                        input_img = images_ref_input[i : i + 1]  # type: ignore
-                        # print(sample_kwargs["start_image_or_video"].shape)
-                        sample_images = (
-                            trainer.sample(
-                                cond_scale=config.checkpoint.cond_scale,
-                                texts=texts_ref,
-                                start_image_or_video=input_img,
-                                start_at_unet_number=2,
-                            )
-                            .detach()
-                            .cpu()
-                        )  # B x C x H x W
-                        image_list.append(sample_images[0])
-
-                sample_images = torch.stack(image_list)
-                input_img = images_ref_input
-                input_img = input_img.permute(2, 3, 0, 1)
-                real_img = images_ref.permute(2, 3, 0, 1)
-                sample_images = sample_images.permute(2, 3, 0, 1)
-
                 affine = np.eye(4)  # example affine matrix
                 nii = nib.Nifti1Image(sample_images.numpy(), affine)
                 nib.save(
@@ -310,8 +316,8 @@ if __name__ == "__main__":
                 with open(filename, "w", encoding="utf-8") as file:
                     for line in texts_ref:
                         file.write(line + "\n")
-
             trainer.accelerator.wait_for_everyone()
+            print("*4*", "after sampling")
 
             additional_data = {
                 "time_elapsed": time.time() - start_time,

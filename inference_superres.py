@@ -141,8 +141,8 @@ if __name__ == "__main__":
         **config.trainer.params,
     ).to(device)
     train_ds = VideoTextDataset(
-        data_folder=paths["example_data"] + "/superres/ctvit_outputs/",
-        xlsx_file=paths["example_data"] + "/data_reports.xlsx",
+        data_folder=paths["inference_superres_inputs"],
+        xlsx_file=paths["inference_text_prompts_excel"],
         num_frames=2,
     )
 
@@ -162,7 +162,8 @@ if __name__ == "__main__":
     infer.accelerator.wait_for_everyone()
 
     # Resume training if requested and possible
-    weight_path = os.path.join(paths["pretrained_models"], "superres_pretrained.pt")
+    # weight_path = os.path.join(paths["pretrained_models"], "superres_pretrained.pt")
+    weight_path = paths["inference_superres_checkpoint"]
     infer.accelerator.print(f"Inference from {weight_path}")
     additional_data = infer.load(weight_path)
     start_time = time.time() - additional_data["time_elapsed"]  # type: ignore
@@ -213,7 +214,8 @@ if __name__ == "__main__":
                 input_img = images_ref_input
                 input_img = input_img.permute(2, 3, 0, 1)
                 sample_images = sample_images.permute(2, 3, 0, 1)
-                affine = np.eye(4)  # example affine matrix
+                # affine = np.eye(4)  # example affine matrix
+                affine = np.diag([1.0, 1.0, 4.0, 1.0])
                 nii = nib.Nifti1Image(sample_images.numpy(), affine)
                 nib.save(
                     nii,

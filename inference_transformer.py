@@ -57,7 +57,8 @@ def infer():
 
     # Load the pre-trained weights
 
-    pretrained_ctvit_path = paths["pretrained_models"] + "/ctvit_pretrained.pt"
+    # pretrained_ctvit_path = paths["pretrained_models"] + "/ctvit_pretrained.pt"
+    pretrained_ctvit_path = paths["inference_ctvit_checkpoint"]
     ctvit.load(pretrained_ctvit_path)
 
     maskgit = MaskGit(
@@ -70,11 +71,14 @@ def infer():
 
     transformer_model = MaskGITTransformer(ctvit=ctvit, maskgit=maskgit).cuda()
     batch_size = 1
-    transformer_model.load(paths["pretrained_models"] + "/transformer_pretrained.pt")
+    # transformer_model.load(paths["pretrained_models"] + "/transformer_pretrained.pt")
+    transformer_model.load(paths["inference_transformer_checkpoint"])
     transformer_model.eval()
 
-    xlsx_file = paths["example_data"] + "/text_prompts.xlsx"
-    labels_data = pd.read_excel(xlsx_file)
+    # xlsx_file = paths["example_data"] + "/text_prompts.xlsx"
+    # labels_data = pd.read_excel(xlsx_file)
+    csv_file = paths["inference_text_prompts"]
+    labels_data = pd.read_csv(csv_file)
 
     # Create a dictionary to map table names to text prompts for given labels
     texts_dict = dict(zip(labels_data["Names"], labels_data["Text_prompts"]))
